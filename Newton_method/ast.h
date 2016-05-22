@@ -111,6 +111,20 @@ unary_expr<minus_, E> operator-(const E& lhs)
     return unary_expr<minus_, E>{lhs};
 }
 
+// check multiplication with arithmetic type
+struct multiple_
+{
+    template <class E0, class E1>
+    auto operator()(const E0& lhs, const E0& lhs) const { return lhs * rhs;}
+};
+
+
+template <class E, typename std::enable_if<std::is_arithmetic<T>::value>::type>
+binary_expr<minus_, E> operator+(const E& lhs)
+{
+    return binary_expr<minus_, E>{lhs, rhs};
+}
+
 // derivative
 
 struct Derivative
