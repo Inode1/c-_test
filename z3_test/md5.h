@@ -135,5 +135,64 @@ unsigned *md5( const char *msg, int mlen)
         free( msg2 );
  
     return h;
-}    
+}  
+
+
+bool checkMD5( const char *msg) 
+{
+    union {
+        unsigned w[16];
+        char     b[64];
+    }mm;
+    Digest abcd;
+    DgstFctn fctn;
+    short m, o, g;
+    unsigned f;
+    short *rotn;
+    int q, p;
+
+    if (k==NULL) k= calcKs(kspace);
+
+    memcpy( mm.b, msg, 64);
+
+    for (q=0; q<4; q++) h[q] = h0[q]; 
+    for (q=0; q<4; q++) abcd[q] = h[q];
+    
+    for (p = 0; p<1; p++) {
+        fctn = ff[p];
+        rotn = rots[p];
+        m = M[p]; o= O[p];
+        for (q=0; q<16; q++) {
+            g = (m*q + o) % 16;
+            f = abcd[1] + rol( abcd[0]+ fctn(abcd) + k[q+16*p] + mm.w[g], rotn[q%4]);
+            abcd[0] = abcd[3];
+            abcd[3] = abcd[2];
+            abcd[2] = abcd[1];
+            abcd[1] = f;
+        }
+    }
+
+    for (p=0; p<4; p++)
+        h[p] += abcd[p];
+
+    WBunion u;
+ 
+/*    for (int j=0;j<4; j++){
+        u.w = h[j];
+        for (int z=0;z<4;z++) printf("%02x",u.b[z]);
+    }*/
+    printf("\n");
+    
+    for (int i = 0; i < sizeof(result)/sizeof(result[0]); ++i)
+    {
+        if (h[i] != result[i])
+        {
+            return false;
+        }
+    }
+
+
+    return true;
+
+} 
 #endif // _MD5_H_

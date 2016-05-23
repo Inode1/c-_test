@@ -135,12 +135,12 @@ int main(int argc, char* argv[])
     }
 
 
-    std::cout << "\n";
+/*    std::cout << "\n";
     for (const auto& a: preimage)
     {
         std::cout << a;
     }
-    std::cout << "\n";
+    std::cout << "\n";*/
 
     // convert to ascii
     // big endian
@@ -151,14 +151,21 @@ int main(int argc, char* argv[])
         for(int i = len - 2; i >= 0; i -= 2)
         {
             std::string byte = a.substr(i,2);
-            std::cout << byte << std::endl;
+            //std::cout << byte << std::endl;
             char chr = (char) (int)strtol(byte.c_str(), NULL, 16);
             newString.push_back(chr);
         }
     }
 
-    std::cout << newString << std::endl;
-    
-
+    //std::cout << newString << std::endl;    
+    //std::cout << newString.size() << std::endl;    
+    if (checkMD5(newString.c_str()))
+    {
+        std::cout << "Good" << std::endl;
+    }
+    else
+    {
+        std::cout << "Bad" << std::endl;
+    }
 
 }
