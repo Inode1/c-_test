@@ -49,7 +49,7 @@ unsigned rol( unsigned v, short amt )
 
 
 Digest h0     = { 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476 };
-Digest result = { 0x77777777, 0x0dbda1c7, 0x87888888, 0x7431eda8 };
+Digest result = { 0x94ccff5e, 0x2204943c, 0x36ed08f3, 0x90dfcceb };
 static DgstFctn ff[] = { &f0, &f1, &f2, &f3 };
 static short M[] = { 1, 5, 3, 7 };
 static short O[] = { 0, 1, 5, 0 };
@@ -101,16 +101,22 @@ unsigned *md5( const char *msg, int mlen)
             memcpy(msg2+q, &u.w, 4 );
         }
     }
+
+
  
     for (grp=0; grp<grps; grp++)
     {
         memcpy( mm.b, msg2+os, 64);
+        /*for (int i = 0; i < 16; ++i)
+        {
+            printf("%0x", mm.w[i]);
+        }*/
         for(q=0;q<4;q++) abcd[q] = h[q];
         for (p = 0; p<1; p++) {
             fctn = ff[p];
             rotn = rots[p];
             m = M[p]; o= O[p];
-            for (q=0; q<1; q++) {
+            for (q=0; q<16; q++) {
                 g = (m*q + o) % 16;
                 f = abcd[1] + rol( abcd[0]+ fctn(abcd) + k[q+16*p] + mm.w[g], rotn[q%4]);
  
