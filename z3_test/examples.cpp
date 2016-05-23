@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
 
 
 
-    const unsigned N = 16;
+    const unsigned N = 32;
     expr_vector A(c);
     expr_vector B(c);
     expr_vector C(c);
@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
         x_name << "D_" << i;
         D.push_back(c.bv_const(x_name.str().c_str(), 32));
         x_name.str(""); 
-        if (i != N)
+        if (i < 16)
         {
             x_name << "M_" << i;
             M.push_back(c.bv_const(x_name.str().c_str(), 32));
@@ -101,19 +101,53 @@ int main(int argc, char* argv[])
     s.add(C[N] + MAKE_VECTOR(h0[2]) == MAKE_VECTOR(result[2]));
     s.add(D[N] + MAKE_VECTOR(h0[3]) == MAKE_VECTOR(result[3]));
 
+
     for (unsigned i = 1; i < N + 1; i++) 
     {
         s.add(A[i] == D[i-1]);
         s.add(C[i] == B[i-1]);
         s.add(D[i] == C[i-1]);
-        int rotate = rot0[(i - 1) % 4];
+        expr conjecture = c.bv_const("J", 32);
+        int rotate;
+        int messageNumber; 
+        std::cout << i << std::endl;
+        if (i < 17)
+        {
+            rotate = rot0[(i - 1) % 4];
+            messageNumber = i - 1;
 
-        expr conjecture = (B[i-1] & C[i-1]) | 
-                          ((~B[i-1]) & D[i-1]);   
-        expr conjecture2 = conjecture + A[i-1] + M[i-1] + MAKE_VECTOR(k[i - 1]);
+            conjecture = (B[i-1] & C[i-1]) | 
+                         ((~B[i-1]) & D[i-1]);   
+        }
+        else if (i < 33)
+        {
+            rotate = rot1[(i - 1) % 4];
+            messageNumber = (5 * (i - 17) + 1) % 16; 
+
+            conjecture = (B[i-1] & D[i-1]) | 
+                         ((~D[i-1]) & C[i-1]);   
+        }
+/*        else if (i < 49)
+        {
+            rotate = rot1[(i - 1) % 4];
+            messageNumber = (5 * (i - 17) + 1) % 16; 
+
+            conjecture = (B[i-1] & D[i-1]) | 
+                         ((~D[i-1]) & C[i-1]);   
+        }
+        else if (i < 65)
+        {
+            rotate = rot1[(i - 1) % 4];
+            messageNumber = (5 * (i - 17) + 1) % 16; 
+
+            conjecture = (B[i-1] & D[i-1]) | 
+                         ((~D[i-1]) & C[i-1]);   
+        }*/
+        expr conjecture2 = conjecture + A[i-1] + M[messageNumber] + MAKE_VECTOR(k[i - 1]);
         s.add(B[i] == B[i-1] + to_expr(c, Z3_mk_rotate_left(c, rotate, conjecture2)));
+            
     }
-    std::cout << s << "\n" << "solving...\n" << s.check() << "\n";
+    std::cout << "solving...\n" << s.check() << "\n";
     model m = s.get_model();
     std::cout << "solution\n" << m;
 
