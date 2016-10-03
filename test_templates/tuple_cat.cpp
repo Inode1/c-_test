@@ -6,7 +6,6 @@
 #include <string>
 #include <boost/type_index.hpp>
 
-
 namespace test
 {
     template <typename T, T... >
@@ -190,16 +189,13 @@ namespace naive
     Res tuple_cat(T&&... p)
     {
         using arguments_type = test::list<typename remove_ref<T>::type...>;
-	using indexs = make_index_sequence_list<make_index_sequance<arguments_type>>;
+    	using indexs = make_index_sequence_list<make_index_sequance<arguments_type>>;
 	
-	// transform from [[,,][][,,,,][,]] to [0,0,0, 2,2,2,2,2, 3,3]
-	using external_index = concat_inner_list_t<test::list<>, test::make_transform_t<make_exernal, arguments_type, indexs>>;
-	
-	using internal_index = concat_inner_list_t<test::list<>, test::make_transform_t<make_internal, arguments_type>>;
-	
-	
-	std::cout << "Wtf  type: " << boost::typeindex::type_id<external_index>().pretty_name() << std::endl;
-        std::cout << "Wtf  type: " << boost::typeindex::type_id<internal_index>().pretty_name() << std::endl;
+	   // transform from [[,,][][,,,,][,]] to [0,0,0, 2,2,2,2,2, 3,3]
+	   using external_index = concat_inner_list_t<test::list<>, test::make_transform_t<make_exernal, arguments_type, indexs>>;
+    	
+    	using internal_index = concat_inner_list_t<test::list<>, test::make_transform_t<make_internal, arguments_type>>;
+    		
         return tuple_cat_<Res>(internal_index(), external_index(), std::tuple<T...>(std::forward<T>(p)...));
     }
     
