@@ -22,6 +22,16 @@ namespace details
         using type = T;
     };
 
+    // get type of list
+    template <typename T>
+    struct get_typename_og_list;
+
+    template <template <typename ...> class T, typename... L>
+    struct get_typename_og_list<T<L...>>
+    {
+        using type = T<>;
+    };
+
     // user type list of data
     template <typename... L>
     struct list{};    
@@ -39,6 +49,12 @@ namespace details
 
     template <typename L>
     using plus = typename plus_imp<L>::type; 
+
+    template <template <typename...> class T>
+    struct plus_imp<T<>>
+    {
+        using type = integral_constant<unsigned, 0>;
+    };
 
     template <template <typename...> class T, class T1>
     struct plus_imp<T<T1>>
@@ -75,20 +91,27 @@ namespace details
     template <typename F, typename S>
     struct if_then<integral_constant<bool, true>, F, S>
     {
-        using type = F;
+        using type = typename F::type;
     };
 
     template <typename F, typename S>
     struct if_then<integral_constant<bool, false>, F, S>
     {
-        using type = S;
+        using type = typename S::type;
     };
 
     // generate list of type
-    template <typename B, typename T, int Count>
+    template <typename B, typename T, unsigned int N>
     struct generate_list_imp;
 
-    template <typename B, typename L, int N>
+    template <template <typename...> class B, typename... Brg,
+              template <typename...> class T, typename... Arg>
+    struct generate_list_imp<B<Brg...>, T<Arg...>, 0>
+    {
+        using type = B<Brg...>;
+    };
+
+    template <typename B, typename L, unsigned int N>
     using generate_list = typename generate_list_imp<B, L, N>::type;
 
     // get by one elements
@@ -96,41 +119,70 @@ namespace details
     struct generate_list_element_imp;
 
     template <template <typename...> class A, typename... Arg,
+              template <typename...> class T, typename... L, typename T1>
+    struct generate_list_element_imp<A<Arg...>, T<T1, L...>, 0>
+    {
+        using type = A<Arg...>;
+    };
+
+    template <template <typename...> class A, typename... Arg,
               template <typename...> class T, typename... L, 
               typename T1, int N
              >
     struct generate_list_element_imp<A<Arg...>, T<T1, L...>, N>
     {
-        using type = generate_list<A<Arg..., T1>, T<L...>, N - 1>;
-    };
-
-
-    template <typename B, typename T>
-    struct generate_list_imp<B, T, 0>
-    {
-        using type = B;
+        using type = typename generate_list_element_imp<
+                                         A<Arg..., T1>, T<L...>, N - 1
+                                         >::type;
     };
 
     template <template <typename...> class B, typename... Brg,
               template <typename...> class T, typename... Arg,
-              int N
+              unsigned int N
              >
     struct generate_list_imp<B<Brg...>, T<Arg...>, N>
     {
-        using type = if_then<integral_constant<bool, (N > sizeof...(Arg))>,
-                             generate_list<B<Brg..., Arg...>,
-                                           T<Arg...>, 
-                                           N - sizeof...(Arg)>,
+        using is_bool = integral_constant<bool, (N >= sizeof...(Arg))>;
+        static constexpr unsigned int value = is_bool::value ? N - sizeof...(Arg) : sizeof...(Arg) - N;
+        using type = typename if_then<is_bool,
+                             generate_list_imp<B<Brg..., Arg...>,
+                                               T<Arg...>, 
+                                               value>,
                              generate_list_element_imp<B<Brg...>, 
                                                        T<Arg...>,
-                                                       N>::type>::type;
+                                                       N>>::type;
     };
 }
 
 namespace details
 {
     // set container
+    template <typename R, typename T>
+    struct create_set_imp;
 
+    template <typename T>
+    using create_set = typename create_set_imp<typename 
+                                               get_typename_og_list<T>::type, 
+                                               T>::type;
+
+    template <template <typename...> class T,
+              typename R
+             >
+    struct create_set_imp<R, T<>>
+    {
+        using type = R;
+    };
+
+    template <template <typename...> class T, typename... L,
+              typename T1, typename... R
+             >
+    struct create_set_imp<T<R...>, T<T1, L...>>
+    {
+        using exist = integral_constant<bool, count<T<L...>, T1>::value != 0>; 
+        using type  = typename if_then< exist, create_set_imp<T<R...>, T<L...>>,
+                                               create_set_imp<T<R..., T1>, T<L...>>
+                                      >::type;
+    };
 }
 
 #define static_assert_integral(typen_name, val)                                \
@@ -140,31 +192,39 @@ namespace details
 
 int main()
 {
-    static_assert_integral(five,          5);
-    static_assert_integral(six,           6);
-    static_assert_integral(seven,         7);
-    static_assert_integral(zero,          0);
-    static_assert_integral(minus_three,  -3);
+    static_assert_integral(one,   1);
+    static_assert_integral(two,   2);
+    static_assert_integral(three, 3);
+    static_assert_integral(thour, 4);
+    static_assert_integral(five,  5);
 
-    using list_param = details::list<integral_type_five, integral_type_six, 
-                                     integral_type_seven, integral_type_zero,
-                                     integral_type_minus_three
+    using list_param = details::list<integral_type_one, integral_type_two, 
+                                     integral_type_three, integral_type_thour,
+                                     integral_type_five
                                     >;
 
-    using sum = details::plus<list_param>;
+/*    using sum = details::plus<list_param>;
 
     std::cout << boost::typeindex::type_id<sum>().pretty_name() << std::endl;
     //static_assert(sum::value == 15, "Invalid sum");
 
-    static_assert(details::is_same<integral_type_five, integral_type_five>::value == true,
+    static_assert(details::is_same<integral_type_one, integral_type_one>::value == true,
                   "Is same");
 
-    static_assert(details::is_same<integral_type_five, integral_type_six>::value == false,
+    static_assert(details::is_same<integral_type_one, integral_type_five>::value == false,
                   "Is not same");
 
     using check_if_contain = details::count<list_param, integral_type_five>;
-    //std::cout << boost::typeindex::type_id<check_if_contain>().pretty_name() << std::endl;
+    std::cout << boost::typeindex::type_id<check_if_contain>().pretty_name() << std::endl;*/
 
-    using generate_list_100_elements = details::generate_list<details::list, list_param, 100>;
+    using generate_list_100_elements = details::generate_list<details::list<>, list_param, 900>;
     std::cout << boost::typeindex::type_id<generate_list_100_elements>().pretty_name() << std::endl;    
+
+    using check_if_contain_second = details::count<generate_list_100_elements, integral_type_five>;
+    std::cout << boost::typeindex::type_id<check_if_contain_second>().pretty_name() << std::endl;    
+
+    //using create_set       = details::create_set<generate_list_100_elements>;
+    //std::cout << boost::typeindex::type_id<create_set>().pretty_name() << std::endl;    
+    //std::cout << boost::typeindex::type_id<create_set_count>().pretty_name() << std::endl;    
+    //std::cout << boost::typeindex::type_id<create_set_count>().pretty_name() << std::endl;    
 }
