@@ -7,7 +7,7 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
-
+//#define BOOST_ASIO_ENABLE_HANDLER_TRACKING 1
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <streambuf>
@@ -15,6 +15,7 @@
 #include <iostream>
 #include <ostream>
 #include <unordered_map>
+#include <memory>
 
 #include "icmp_header.hpp"
 #include "ipv4_header.hpp"
@@ -25,15 +26,9 @@ namespace posix_time = boost::posix_time;
 
 class pinger;
 
-std::unordered_map<std::string, pinger*> data;
 
-void check_data(const std::string& ip)
-{
-    if (data.find(ip) != data.end())
-    {
-        data->check_data()
-    }
-}
+
+void check_data(const std::string& ip);
 
 class Socket
 {
@@ -71,8 +66,6 @@ private:
   {
     // The actual number of bytes received is committed to the buffer so that we
     // can extract it using a std::istream object.
-    std::cout << "handle_receive: " << length << std::endl;
-    
     reply_buffer_.commit(length);
 
     // Decode the reply packet.
@@ -84,11 +77,6 @@ private:
     // We can receive all ICMP packets received by the host, so we need to
     // filter out only the echo replies that match the our identifier and
     // expected sequence number.
-    std::cout << "1" << std::endl;
-    if (icmp_hdr.type() == icmp_header::echo_request)
-    {
-        std::cout << "reuqwzt" << std::endl;
-    }
     if (is && icmp_hdr.type() == icmp_header::echo_reply)
     {
 
@@ -102,12 +90,11 @@ private:
         << std::endl;
         m_ioService.dispatch(std::bind(check_data, ipv4_hdr.source_address().to_string()));
     }
-    std::cout << "2" << std::endl;
     start_receive();
     
   }
 
-    Socket(): m_socket(m_ioService, icmp::v4()) { start_receive(); std::cout << 1 << std::endl;  }
+    Socket(): m_socket(m_ioService, icmp::v4()) { start_receive(); }
     boost::asio::io_service m_ioService;
     icmp::socket m_socket;
     boost::asio::streambuf reply_buffer_;
@@ -126,18 +113,35 @@ public:
     : resolver_(Socket::Instance().GetIOService()),
       timer_(Socket::Instance().GetIOService()),
       m_timeout(timeout), m_repeat(repeat), 
-      sequence_number_(0), num_replies_(0), m_count(count++)
+      sequence_number_(0), num_replies_(0), m_count(count++), ping(true)
   {
     icmp::resolver::query query(icmp::v4(), destination, "");
     destination_ = *resolver_.resolve(query);
-    std::cout << m_count << std::endl;
     start_send();
   }
+  void check_data(const std::string& ip)
+  {
+    if (!ping)
+    {
+      return;
+    }
+    else
+    {
+      std::cout << m_count << " " << ip << std::endl;
+      timer_.cancel();
+    }
 
+  }
+  ~pinger()
+  {
+    std::cout << m_count << " is deleted" << std::endl;
+  }
 private:
+
 
   void start_send()
   {
+    ping = true;
     std::string body("\"Hello!\" from Asio ping.");
 
     // Create an ICMP header for an echo request.
@@ -158,17 +162,22 @@ private:
     Socket::Instance().GetSocket().send_to(request_buffer.data(), destination_);
     // Wait up to five seconds for a reply.
     num_replies_ = 0;
-    timer_.expires_at(time_sent_ + posix_time::seconds(5));
-    timer_.async_wait(boost::bind(&pinger::handle_timeout, this));
+    timer_.expires_at(time_sent_ + posix_time::seconds(m_timeout));
+    timer_.async_wait(boost::bind(&pinger::handle_timeout, this, _1));
   }
 
-  void handle_timeout()
+  void handle_timeout(const boost::system::error_code& error)
   {
-    if (num_replies_ == 0)
+    std::cout << "m_count= " << m_count << std::endl;
+    if (!error)
+    {
       std::cout << "Request timed out" << std::endl;
-
+    }
+    else
+      std::cout << "Good ping wait" << std::endl;
+    ping = false;
     // Requests must be sent no less than one second apart.
-    timer_.expires_at(time_sent_ + posix_time::seconds(5));
+    timer_.expires_at(time_sent_ + posix_time::seconds(m_repeat));
     timer_.async_wait(boost::bind(&pinger::start_send, this));
   }
 
@@ -191,28 +200,41 @@ private:
   const int m_count;
   int m_timeout;
   int m_repeat;
+  bool ping;
 };
 
+
+std::unordered_map<std::string, std::unique_ptr<pinger>> data;
+void check_data(const std::string& ip)
+{
+    if (data.find(ip) != data.end())
+    {
+        data[ip]->check_data(ip);
+    }
+}
+
+
 int pinger::count = 0;
-
-
-
 
 int main(int argc, char* argv[])
 {
   try
   {
-    std::string r1("172.16.5.41");
-    std::string r2("172.16.5.42");
+    std::string r1("10.10.36.38");
+    std::string r2("10.10.36.39");
     std::string r3("172.16.5.43");
 
-    pinger a(r1.c_str(), 5, 10);
-    data.insert({r1, &a});
-    pinger b(r2.c_str(), 5, 10);
-    data.insert({r2, &b});
-    pinger c(r3.c_str(), 5, 10);
-    data.insert({r3, &c});
-    Socket::GetIOService().run();
+    data.insert(std::make_pair(r1, std::unique_ptr<pinger>(new pinger(r1.c_str(), 5, 3))));
+    data.insert(std::make_pair(r2, std::unique_ptr<pinger>(new pinger(r2.c_str(), 5, 8))));
+    data.insert(std::make_pair(r3, std::unique_ptr<pinger>(new pinger(r3.c_str(), 5, 16))));
+
+  deadline_timer timer_(Socket::GetIOService());
+
+  timer_.expires_from_now(posix_time::seconds(15));
+  timer_.async_wait([](const boost::system::error_code&){ std::cout << "deleted " << data.begin()->first << std::endl; data.erase(data.begin());});
+
+  Socket::GetIOService().run();
+
   }
   catch (std::exception& e)
   {
