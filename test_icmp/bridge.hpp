@@ -1,3 +1,6 @@
+#ifndef _BRIDGE_HPP_
+#define _BRIDGE_HPP_
+#include <boost/asio.hpp>
 class Bridge
 {
 public:
@@ -19,43 +22,18 @@ private:
 class SocketIOServiceControl
 {
 public:
-    virtual void checkData();
-}
+    virtual void stopReceive()                      = 0;
+    virtual void startReceive()                     = 0;    
+    virtual boost::asio::io_service& GetIOService() = 0;
+    virtual boost::asio::ip::icmp::socket& GetSocket() = 0;
+    virtual ~SocketIOServiceControl() {};
+};
 
-class SocketIOService
+class TaskControl
 {
 public:
-    static Socket& Instance();
-    boost::asio::io_service& GetIOService();
-    icmp::socket& GetSocket();
-    Socket(const Socket&) = delete;
-    Socket& operator=(const Socket&) = delete;
-
-    void check_data(const std::string& ip);
-private:
-
-    void start_receive();
-    void handle_receive(std::size_t length);
-    Socket(): m_socket(m_ioService, icmp::v4()) { start_receive(); }
-
-    boost::asio::io_service m_ioService;
-    icmp::socket m_socket;
-    boost::asio::streambuf reply_buffer_;
-
+    virtual void CheckData() = 0;
+    virtual ~TaskControl() {};
 };
 
-class Task: public Bridge
-{
-    Task();
-    void addRecord()    override;
-    void deleteRecord() override;
-    void changeTimout() override;
-    void changeRepeat() override;
-
-    static void start_send(Data* ptr, const boost::system::error_code& error);
-    static void handle_timeout(Data* ptr, const boost::system::error_code& error);
-
-private:
-    Socket* m_socket;
-    std::unordered_map<std::string, Data> m_data;
-};
+#endif

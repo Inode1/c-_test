@@ -8,7 +8,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 //#define BOOST_ASIO_ENABLE_HANDLER_TRACKING 1
-#include <boost/asio.hpp>
+/*#include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <streambuf>
 #include <istream>
@@ -25,33 +25,6 @@
 using boost::asio::ip::icmp;
 using boost::asio::deadline_timer;
 namespace posix_time = boost::posix_time;
-
-struct Data
-{
-  Data(boost::asio::io_service& ioService, const std::string& dest, 
-       int timeout, int repeat);
-
-  Data(const Data&) = delete;
-  Data& operator=(const Data&) = delete;
-  void destroy()
-  {
-    timer_.cancel();
-    m_destroy = true;
-  }
-  
-
-  icmp::endpoint destination_;
-  deadline_timer timer_;
-  unsigned short sequence_number_;
-  static int count;
-  const int m_count;
-  int m_timeout;
-  int m_repeat;
-  bool m_destroy;
-  bool m_send;
-};
-
-int Data::count = 0;
 
 class Socket
 {
@@ -281,22 +254,24 @@ void Socket::destroy(const std::string& ip)
     start_receive();
     
   }
+*/
 
+#include <string>
 int main(int argc, char* argv[])
 {
-    Socket& p = Socket::Instance(); 
+    //Socket& p = Socket::Instance(); 
     std::string r1("172.16.5.41");
     std::string r2("172.16.5.52");
     std::string r3("172.16.5.43");
-    p.add_data(r1, 3, 3);
-    p.add_data(r2, 5, 6);
-    p.add_data(r3, 5, 12);
+    //p.add_data(r1, 3, 3);
+    //p.add_data(r2, 5, 6);
+    //p.add_data(r3, 5, 12);
 
     //deadline_timer timer_(p.GetIOService());
     //timer_.expires_from_now(boost::posix_time::seconds(1));
     //timer_.async_wait([&r3, &timer_, &p](const boost::system::error_code&){ std::cout << "delete" << std::endl; p.delete_data(p.m_data.begin()->first); p.add_data(r3, 3, 3);});
 
-    p.GetIOService().run();
+    //p.GetIOService().run();
 }
 /*
 using namespace boost::asio;
