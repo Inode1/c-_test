@@ -20,6 +20,8 @@
 #include "icmp_header.hpp"
 #include "ipv4_header.hpp"
 
+#include "bridge.hpp"
+
 using boost::asio::ip::icmp;
 using boost::asio::deadline_timer;
 namespace posix_time = boost::posix_time;
@@ -36,6 +38,7 @@ struct Data
     timer_.cancel();
     m_destroy = true;
   }
+  
 
   icmp::endpoint destination_;
   deadline_timer timer_;
