@@ -23,8 +23,14 @@ int main(int argc, char* argv[])
     p.addRecord(r3, 5, 12);
 
     deadline_timer timer_(p.m_ioService);
-    timer_.expires_from_now(boost::posix_time::seconds(1));
-    timer_.async_wait([&p, &timer_, &r1](const boost::system::error_code&){ std::cout << "delete" << std::endl; p.deleteRecord(r1); p.addRecord(r1, 3, 3);});
+    timer_.expires_from_now(boost::posix_time::seconds(11));
+    timer_.async_wait([&p, &timer_, &r1](const boost::system::error_code&){ 
+        std::cout << "delete" << std::endl; 
+        p.deleteRecord(r1); 
+        p.addRecord(r1, 3, 3);
+        timer_.expires_from_now(boost::posix_time::seconds(11));
+        
+    });
 
 
     p.Run();

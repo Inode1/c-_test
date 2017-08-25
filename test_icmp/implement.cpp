@@ -66,12 +66,19 @@ void Task::changeRepeat(const std::string& ip, unsigned repeat)
 
 void Task::checkData(const std::string& ip)
 {
-    auto it = m_data.find(ip);
-    if (it == m_data.end())
+    auto range = m_data.equal_range(ip);
+    auto it = std::find_if(range.first, range.second, [](const auto& p) 
+        {
+            return !p.second.m_destroy;
+        }
+    );
+
+    if (it == range.second)
     {
-        std::cout << "Unknown icmp" << std::endl;
+        std::cout << "already not exist" << std::endl;
         return;
     }
+
     auto& data = it->second;
     if (data.m_send)
     {
@@ -172,7 +179,7 @@ void Task::handleTimeout(Data* ptr, const boost::system::error_code& error)
     std::cout << "m_count= " << ptr->m_count << std::endl;
     if (!error)
     {
-        std::cout << "Request timed out" << std::endl;
+        std::cout << "Request timed out for " << ptr->destination_.address().to_string() << std::endl;
     }
     else
     {
