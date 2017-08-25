@@ -1,18 +1,18 @@
 #ifndef _BRIDGE_HPP_
 #define _BRIDGE_HPP_
 #include <boost/asio.hpp>
-class Bridge
+/*class Bridge
 {
 public:
-    Bridge();
+    Bridge(Base* ptr);
     virtual void addRecord() = 0;
     virtual void deleteRecord() = 0;
     virtual void changeTimout() = 0;
     virtual void changeRepeat() = 0;
     virtual ~Bridge() {};
 protected:
-    //Interface *GetInterface();
-    //View      *GetView();
+    Base* GetBase();
+    Task* GetView();
 private:
     //Interface* m_interface;
     //View*      m_view;
@@ -34,6 +34,6 @@ class TaskControl
 public:
     virtual void CheckData() = 0;
     virtual ~TaskControl() {};
-};
+};*/
 
 #endif

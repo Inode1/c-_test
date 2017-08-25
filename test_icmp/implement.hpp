@@ -2,78 +2,67 @@
 #define _INTERFEACE_HPP
 
 #include <unordered_map>
+#include <iostream>
 
 #include "bridge.hpp"
 
 using boost::asio::ip::icmp;
 using boost::asio::deadline_timer;
 using boost::asio::io_service;
-using boost::asio::ip::icmp::socket;
-
-class SocketIOService: public SocketIOServiceControl
-{
-public:
-    static SocketIOService* Instance();
-    SocketIOService(const SocketIOService&) = delete;
-    SocketIOService& operator=(const SocketIOService&) = delete;
-
-    io_service& GetIOService() override;
-    socket& GetSocket() override;
-    void stopReceive() override;
-    void startReceive() override;
-private:
-
-    void start_receive();
-    void handle_receive(std::size_t length);
-    SocketIOService(): m_socket(m_ioService, icmp::v4());
-
-    io_service m_ioService;
-    socket m_socket;
-    boost::asio::streambuf reply_buffer_;
-
-};
+using boost::asio::ip::icmp;
 
 struct Data
 {
-  Data(boost::asio::io_service& ioService, const std::string& dest, 
-       int timeout, int repeat);
+    Data(boost::asio::io_service& ioService, const std::string& dest, 
+       int timeout, int repeat)
+       : timer_(ioService), m_count(count++),
+         m_timeout(timeout), m_repeat(repeat),
+         m_destroy(false), m_send(false),
+         destination_(boost::asio::ip::address::from_string(dest), 0)
+    {
+    }
 
-  Data(const Data&) = delete;
-  Data& operator=(const Data&) = delete;
-  void destroy()
-  {
-    timer_.cancel();
-    m_destroy = true;
-  }
-  icmp::endpoint destination_;
-  deadline_timer timer_;
-  unsigned short sequence_number_;
-  static int count;
-  const int m_count;
-  int m_timeout;
-  int m_repeat;
-  bool m_destroy;
-  bool m_send;
+    Data(const Data&) = delete;
+    Data& operator=(const Data&) = delete;
+    void destroy()
+    {
+        timer_.cancel();
+        m_destroy = true;
+    }
+    icmp::endpoint destination_;
+    deadline_timer timer_;
+    unsigned short sequence_number_;
+    static int count;
+    const int m_count;
+    int m_timeout;
+    int m_repeat;
+    bool m_destroy;
+    bool m_send;
 };
 
-int Data::count = 0;
-
-class Task: public Bridge, public TaskControl
+class Task
 {
-    Task();
+public:
+    Task(): m_socket(m_ioService, icmp::v4()) {}
     // Bridge Interface
-    void addRecord()    override;
-    void deleteRecord() override;
-    void changeTimout() override;
-    void changeRepeat() override;
-    // TaskControl Interface
-    void CheckData() override;
-
-    static void start_send(Data* ptr, const boost::system::error_code& error);
-    static void handle_timeout(Data* ptr, const boost::system::error_code& error);
-
+    bool addRecord(const std::string& ip, unsigned timeout, unsigned repeat);
+    void deleteRecord(const std::string& ip);
+    void changeTimout(const std::string& ip, unsigned timeout);
+    void changeRepeat(const std::string& ip, unsigned repeat);
+    void checkData(const std::string& ip);
+    void Run() { m_ioService.run(); }
+    io_service m_ioService;
 private:
-    SocketIOServiceControl* m_socket;
-    std::unordered_map<std::string, Data> m_data;
+    void startReceive();
+    void handleReceive(const boost::system::error_code& error, std::size_t length);
+
+    void startSend(Data* ptr, const boost::system::error_code& error);
+    void handleTimeout(Data* ptr, const boost::system::error_code& error);
+
+    icmp::socket m_socket;
+
+
+    boost::asio::streambuf m_replyBuffer;
+    std::unordered_multimap<std::string, Data> m_data;
 };
 #endif
